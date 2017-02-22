@@ -267,7 +267,7 @@ def check_status(container, desired_state):
         ok("{} status is {}".format(container, desired_state))
 
 
-def check_uptime(container_name, warn, crit, units=None):
+def check_uptime(container_name, warn, crit, units=None, greater_than=False,):
     inspection = get_container_info(container_name)['State']['StartedAt']
     only_secs = inspection[0:19]
     start = datetime.strptime(only_secs, "%Y-%m-%dT%H:%M:%S")
@@ -278,8 +278,10 @@ def check_uptime(container_name, warn, crit, units=None):
     graph_padding = 2
     evaluate_numeric_thresholds(container=container_name, value=uptime, units='s', warn=warn, crit=crit,
                                 name='uptime',
-                                short_name='up', min=0, max=graph_padding, greater_than=False)
+                                short_name='up', min=0, max=graph_padding, greater_than=greater_than)
 
+def check_max_uptime(container_name, warn, crit, units=None):
+    check_uptime(container_name, warn, crit, units, True)
 
 def check_restarts(container, warn, crit, units=None):
     inspection = get_container_info(container)
@@ -381,6 +383,13 @@ def process_args(args):
                         metavar='WARN:CRIT',
                         help='Minimum container uptime in seconds. Use when infrequent crashes are tolerated.')
 
+    parser.add_argument('--max-uptime',
+                        dest='max_uptime',
+                        action='store',
+                        type=str,
+                        metavar='WARN:CRIT',
+                        help='Maximum container uptime in seconds. Use when long running containers should not be present.')
+
     # Version
     parser.add_argument('--version',
                         dest='version',
@@ -446,7 +455,6 @@ if __name__ == '__main__':
 
     #############################################################################################
     args = process_args(argv[1:])
-
     if socketfile_permissions_failure(args):
         unknown("Cannot access docker socket file. User ID={}, socket file={}".format(os.getuid(), args.connection))
     elif no_checks_present(args):
@@ -461,7 +469,6 @@ if __name__ == '__main__':
                 unknown("No containers names found matching criteria")
             else:
                 for container in containers:
-
                     # Check status
                     if args.status:
                         check_status(container, args.status)
@@ -473,6 +480,9 @@ if __name__ == '__main__':
                     # Check uptime
                     if args.uptime:
                         check_uptime(container, *parse_thresholds(args.uptime, include_units=False))
+
+                    if args.max_uptime:
+                        check_max_uptime(container, *parse_thresholds(args.max_uptime, include_units=False))
 
                     # Check version
                     if args.version:
