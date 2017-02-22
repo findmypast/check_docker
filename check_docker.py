@@ -267,7 +267,7 @@ def check_status(container, desired_state):
         ok("{} status is {}".format(container, desired_state))
 
 
-def check_uptime(container_name, warn, crit, units=None, greater_than=False,):
+def check_uptime(container_name, warn, crit, units=None, greater_than=False):
     inspection = get_container_info(container_name)['State']['StartedAt']
     only_secs = inspection[0:19]
     start = datetime.strptime(only_secs, "%Y-%m-%dT%H:%M:%S")
